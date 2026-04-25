@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "sources": ["../src/main.ts"],
+  "sourcesContent": [
+    "import \"./styles.css\";\n\nconst app = document.querySelector<HTMLDivElement>(\"#app\");\n\nif (!app) {\n  throw new Error(\"App root was not found.\");\n}\n\napp.innerHTML = `\n  <main class=\"page\">\n    <section class=\"hero\">\n      <p class=\"lead\">\n        The some page\n      </p>\n    </section>\n\n\n    <footer class=\"footer\">\n      <span><strong>Build target</strong></span>\n      <span id=\"year\"></span>\n    </footer>\n  </main>\n`;\n\nconst year = document.querySelector<HTMLSpanElement>(\"#year\");\n\nif (year) {\n  year.textContent = new Date().getFullYear().toString();\n}\n"
+  ],
+  "mappings": "AAEA,IAAM,EAAM,SAAS,cAA8B,MAAM,EAEzD,GAAI,CAAC,EACH,MAAU,MAAM,yBAAyB,EAG3C,EAAI,UAAY;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,EAgBhB,IAAM,EAAO,SAAS,cAA+B,OAAO,EAE5D,GAAI,EACF,EAAK,YAAc,IAAI,KAAK,EAAE,YAAY,EAAE,SAAS",
+  "debugId": "5540EE989ED27A2064756E2164756E21",
+  "names": []
+}

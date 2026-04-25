@@ -1,0 +1,8 @@
+{
+  "name": "static",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "bun run ./scripts/build.js"
+  }
+}
