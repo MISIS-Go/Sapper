@@ -1,7 +1,0 @@
-﻿services:
-  sapper:
-    image: sapper
-    build:
-      context: .
-      dockerfile: Sapper/Dockerfile
-
