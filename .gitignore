@@ -1,19 +1,9 @@
-# Backend (C#)
-backend/bin/
-backend/obj/
-backend/*.user
-backend/.vs/
+bin/
+obj/
 
-# Frontend (Rust/WASM)
-frontend/target/
-frontend/dist/
-frontend/pkg/
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Editor
 .vscode/
 .idea/
 *.swp

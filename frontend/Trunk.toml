@@ -1,4 +1,0 @@
-
-[[proxy]]
-rewrite = "/api"
-backend = "http://localhost:5137/api"
