@@ -1,12 +1,12 @@
 namespace UI;
 
-using System.Numerics;
+
 using Raylib_cs;
+using System.Numerics;
 
-
-public class MainUI
+public class MainUI : IUI
 {
-    public static void Draw()
+    public void Draw()
     {
         var BestScore = 0;
         int btnWidth = 400;
@@ -25,30 +25,13 @@ public class MainUI
             Raylib.DrawText("High Score: " + BestScore, 370, 60, 20, Color.Black);
             Raylib.DrawText("Made by err and CVVAROG", 610, 878, 20, Color.DarkGray);
 
-            DrawButton(btnStart, "Start new game", mousePos);
-            DrawButton(btnContinue, "Continue?", mousePos);
-            DrawButton(btnLeaderboard, "Liderboard", mousePos);
-            DrawButton(btnSettings, "Settings", mousePos);
+            Lib.DrawButton(btnStart, "Start new game", mousePos);
+            Lib.DrawButton(btnContinue, "Continue?", mousePos);
+            Lib.DrawButton(btnLeaderboard, "Liderboard", mousePos);
+            Lib.DrawButton(btnSettings, "Settings", mousePos);
 
             Raylib.EndDrawing();
         }
     }
-    private static void DrawButton(Rectangle rect, string text, Vector2 mousePos)
-    {
-        bool isHovered = Raylib.CheckCollisionPointRec(mousePos, rect);
 
-        Color borderColor = isHovered ? Color.Blue : Color.Black;
-        Color fontColor = isHovered ? Color.Blue : Color.Black;
-
-        Raylib.DrawRectangleRec(rect, Color.White);
-        Raylib.DrawRectangleLinesEx(rect, 2, borderColor);
-
-        int fontSize = 24;
-        int textWidth = Raylib.MeasureText(text, fontSize);
-
-        int textX = (int)(rect.X + (rect.Width - textWidth) / 2);
-        int textY = (int)(rect.Y + (rect.Height - fontSize) / 2);
-
-        Raylib.DrawText(text, textX, textY, fontSize, fontColor);
-    }
 }
