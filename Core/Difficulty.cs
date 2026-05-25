@@ -6,4 +6,4 @@ namespace Model.Core
         public const double Medium = 0.30;
         public const double Hard = 0.40;
     }
-}
+} 
