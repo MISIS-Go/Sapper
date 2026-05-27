@@ -1,35 +1,22 @@
-using System.Linq;
-
-namespace Model.Core
+namespace Core
 {
     public partial class GameLogic
     {
         partial void CheckWinCondition()
         {
-            if (IsGameOver) return;
-
-            bool allMinesFlagged = true;
             bool allNonMinesOpened = true;
-
-            for (int i = 0; i < Field.Height; i++)
+            for (int r = 0; r < Field.Height; r++)
+            for (int c = 0; c < Field.Width; c++)
             {
-                for (int j = 0; j < Field.Width; j++)
+                var cell = Field.Cells[r, c];
+                if (!cell.IsMine && !cell.IsOpened)
                 {
-                    var cell = Field.Cells[i, j];
-                    if (cell.IsMine)
-                    {
-                        if (!cell.HasFlag)
-                            allMinesFlagged = false;
-                    }
-                    else
-                    {
-                        if (!cell.IsOpened)
-                            allNonMinesOpened = false;
-                    }
+                    allNonMinesOpened = false;
+                    break;
                 }
             }
 
-            if (allMinesFlagged && allNonMinesOpened)
+            if (allNonMinesOpened)
             {
                 IsGameOver = true;
                 IsWin = true;

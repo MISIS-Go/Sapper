@@ -1,4 +1,6 @@
-namespace Model.Core
+using Model;
+
+namespace Core
 {
     public class MineCell : CellBase
     {

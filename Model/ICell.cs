@@ -1,4 +1,4 @@
-namespace Core
+namespace Model
 {
     public interface ICell
     {

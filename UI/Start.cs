@@ -1,4 +1,6 @@
 using System.Numerics;
+using Core;
+using Model;
 using Raylib_cs;
 
 namespace UI;
@@ -7,25 +9,25 @@ public class Start : IUI
 {
     private bool isSizeDropdownOpen = false;
     private string selectedSize = "5x5";
-    private string[] sizeOptions = { "5x5", "5x10", "10x10" };
+    private readonly string[] sizeOptions = { "5x5", "5x10", "10x10", "12x12", "15x10", "15x15", "20x15", "20x20" };
 
     private bool isDifficultyDropdownOpen = false;
-    private string selectedDifficulty = "Hardcore";
-    private string[] difficultyOptions = { "Normal", "Hard", "Expert" };
+    private string selectedDifficulty = "Normal";
+    private readonly string[] difficultyOptions = { "Normal", "Expert", "Nightmare" };
 
     public void Draw()
     {
-        int dropWidth = 320;
-        int dropHeight = 800 / 12;
+        int dropWidth = 300;
+        int dropHeight = 54;
 
         Rectangle rectSizeDrop = new Rectangle(110, 200, dropWidth, dropHeight);
-        Rectangle rectDiffDrop = new Rectangle(470, 200, dropWidth, dropHeight);
+        Rectangle rectDiffDrop = new Rectangle(490, 200, dropWidth, dropHeight);
 
-        int btnWidth = 400;
-        int btnHeight = 800 / 12;
+        int btnWidth = 360;
+        int btnHeight = 68;
         int btnX = (900 - btnWidth) / 2;
-        Rectangle btnStart = new Rectangle(btnX, 400, btnWidth, btnHeight * 2);
-        Rectangle btnBack = new Rectangle(btnX, 650, btnWidth, btnHeight);
+        Rectangle btnStart = new Rectangle(btnX, 430, btnWidth, btnHeight);
+        Rectangle btnBack = new Rectangle(btnX, 520, btnWidth, btnHeight);
 
         Vector2 mousePos = Raylib.GetMousePosition();
         bool isLeftMouseClicked = Raylib.IsMouseButtonPressed(MouseButton.Left);
@@ -44,14 +46,16 @@ public class Start : IUI
 
         if (Raylib.CheckCollisionPointRec(mousePos, btnStart) && isLeftMouseClicked)
         {
-            InitUI.CurrentState = GameState.Game;
+            ApplySelection();
+            InitUI.StartSelectedGame();
         }
 
         if (Raylib.CheckCollisionPointRec(mousePos, btnBack) && isLeftMouseClicked)
         {
-            InitUI.CurrentState = GameState.Main;
+            InitUI.OpenMainMenu();
         }
 
+        Raylib.DrawText("New game", 350, 90, 40, Color.Black);
         Lib.DrawButton(btnStart, "Start", mousePos);
         Lib.DrawButton(btnBack, "Back", mousePos);
 
@@ -87,5 +91,35 @@ public class Start : IUI
                 }
             }
         }
+    }
+
+    private void ApplySelection()
+    {
+        (int width, int height) = ParseSize(selectedSize);
+        InitUI.SelectedWidth = width;
+        InitUI.SelectedHeight = height;
+        InitUI.SelectedDifficultyName = selectedDifficulty;
+        InitUI.SelectedMinePercentage = selectedDifficulty switch
+        {
+            "Normal" => Core.Difficulty.Normal,
+            "Expert" => Core.Difficulty.Expert,
+            "Nightmare" => Core.Difficulty.Nightmare,
+            _ => Core.Difficulty.Normal
+        };
+    }
+
+    private static (int width, int height) ParseSize(string value)
+    {
+        string[] parts = value.Split('x', 'X');
+        if (parts.Length != 2)
+            return (5, 5);
+
+        if (!int.TryParse(parts[0], out int width))
+            width = 5;
+
+        if (!int.TryParse(parts[1], out int height))
+            height = 5;
+
+        return (Math.Max(5, width), Math.Max(5, height));
     }
 }
