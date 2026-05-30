@@ -11,16 +11,22 @@ namespace UI;
 
 public class Liderboard : IUI
 {
+    private const string OnlineBaseUrl = "http://someerr.online:8080";
     public static string SelectedMode = "Local";
     public static string SelectedFilter = "All";
-    public static string OnlineFetchUrl = string.Empty;
-    public static string OnlineSubmitUrl = string.Empty;
 
     private static readonly List<LeaderboardEntry> OfflineEntries = new();
     private static List<LeaderboardEntry> OnlineEntries = new();
     private static bool offlineLoaded;
     private static bool onlineLoaded;
+    private static string onlineLoadedFilter = string.Empty;
+    private static string? onlineStatusMessage;
     private static readonly HttpClient HttpClient = new HttpClient();
+
+    static Liderboard()
+    {
+        HttpClient.Timeout = TimeSpan.FromSeconds(3);
+    }
 
     public void Draw()
     {
@@ -36,21 +42,23 @@ public class Liderboard : IUI
         Vector2 mousePos = Raylib.GetMousePosition();
         bool isLeftMouseClicked = Raylib.IsMouseButtonPressed(MouseButton.Left);
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnBack) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnBack, mousePos, isLeftMouseClicked))
         {
             InitUI.OpenMainMenu();
         }
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnMode) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnMode, mousePos, isLeftMouseClicked))
         {
             SelectedMode = SelectedMode == "Local" ? "Online" : "Local";
             if (SelectedMode == "Online")
                 EnsureOnlineLoaded();
         }
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnFilter) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnFilter, mousePos, isLeftMouseClicked))
         {
             SelectedFilter = NextFilter(SelectedFilter);
+            if (SelectedMode == "Online")
+                EnsureOnlineLoaded();
         }
 
         Raylib.DrawText("Liderboard", 330, 110, 42, Color.Black);
@@ -65,8 +73,9 @@ public class Liderboard : IUI
         else
         {
             DrawEntries(GetFilteredEntries(OnlineEntries));
-            if (string.IsNullOrWhiteSpace(OnlineFetchUrl))
-                Raylib.DrawText("Online URLs are not configured yet", 180, 190, 22, Color.Maroon);
+
+            if (!string.IsNullOrWhiteSpace(onlineStatusMessage))
+                Raylib.DrawText(onlineStatusMessage, 180, 190, 22, Color.Maroon);
         }
     }
 
@@ -82,13 +91,40 @@ public class Liderboard : IUI
             MinePercentage = minePercentage,
             Seconds = elapsedSeconds,
             Mode = SelectedMode,
-            AchievedAt = DateTime.UtcNow
+            AchievedAt = DateTime.UtcNow,
+            IsUploaded = false
         };
 
         OfflineEntries.Add(entry);
         SortAndTrim(OfflineEntries);
+
+        if (TrySubmitOnlineEntry(entry))
+            entry.IsUploaded = true;
+
         SaveOfflineEntries();
-        SubmitOnlineEntry(entry);
+    }
+
+    public static void SyncPendingOfflineEntries()
+    {
+        EnsureOfflineLoaded();
+        if (!IsOnlineServerAvailable())
+            return;
+
+        bool hasChanges = false;
+        foreach (LeaderboardEntry entry in OfflineEntries)
+        {
+            if (entry.IsUploaded)
+                continue;
+
+            if (!TrySubmitOnlineEntry(entry))
+                continue;
+
+            entry.IsUploaded = true;
+            hasChanges = true;
+        }
+
+        if (hasChanges)
+            SaveOfflineEntries();
     }
 
     public static int GetBestLocalScore()
@@ -111,7 +147,7 @@ public class Liderboard : IUI
         for (int i = 0; i < Math.Min(10, entries.Count); i++)
         {
             LeaderboardEntry entry = entries[i];
-            string line = $"{i + 1}. {entry.Score} pts   {entry.Width}x{entry.Height}   {FormatDifficulty(entry.MinePercentage)}   {FormatTime(entry.Seconds)}";
+            string line = $"{i + 1}. {entry.Score} pts   {entry.Width}x{entry.Height}   {FormatDifficulty(entry.MinePercentage)}   {Lib.FormatTime(entry.Seconds)}";
             Raylib.DrawText(line, 110, startY + i * rowHeight, 22, Color.Black);
         }
     }
@@ -150,13 +186,6 @@ public class Liderboard : IUI
         return "Nightmare";
     }
 
-    private static string FormatTime(int seconds)
-    {
-        int minutes = seconds / 60;
-        int remainingSeconds = seconds % 60;
-        return $"{minutes:00}:{remainingSeconds:00}";
-    }
-
     private static int CalculateScore(int width, int height, double minePercentage, int elapsedSeconds)
     {
         double timeFactor = Math.Max(1, elapsedSeconds);
@@ -186,48 +215,82 @@ public class Liderboard : IUI
                 SortAndTrim(OfflineEntries);
             }
         }
-        catch
+        catch (Exception exception)
         {
+            LogError("Failed to load offline leaderboard", exception);
             OfflineEntries.Clear();
         }
     }
 
     private static void EnsureOnlineLoaded()
     {
-        if (onlineLoaded)
+        if (onlineLoaded && string.Equals(onlineLoadedFilter, SelectedFilter, StringComparison.OrdinalIgnoreCase))
             return;
 
         onlineLoaded = true;
-        if (string.IsNullOrWhiteSpace(OnlineFetchUrl))
+        onlineLoadedFilter = SelectedFilter;
+
+        if (!IsOnlineServerAvailable())
+        {
+            OnlineEntries = new List<LeaderboardEntry>();
+            onlineStatusMessage = "Online leaderboard server is unavailable";
             return;
+        }
 
         try
         {
-            string json = HttpClient.GetStringAsync(OnlineFetchUrl).GetAwaiter().GetResult();
+            string requestUrl = BuildLeaderboardUrl(SelectedFilter);
+            string json = HttpClient.GetStringAsync(requestUrl).GetAwaiter().GetResult();
             List<LeaderboardEntry>? entries = JsonConvert.DeserializeObject<List<LeaderboardEntry>>(json);
             OnlineEntries = entries ?? new List<LeaderboardEntry>();
             SortAndTrim(OnlineEntries);
+            onlineStatusMessage = null;
         }
-        catch
+        catch (Exception exception)
         {
+            LogError("Failed to load online leaderboard", exception);
             OnlineEntries = new List<LeaderboardEntry>();
+            onlineStatusMessage = "Failed to load online leaderboard";
         }
     }
 
-    private static void SubmitOnlineEntry(LeaderboardEntry entry)
+    private static bool TrySubmitOnlineEntry(LeaderboardEntry entry)
     {
-        if (string.IsNullOrWhiteSpace(OnlineSubmitUrl))
-            return;
+        if (!IsOnlineServerAvailable())
+            return false;
 
         try
         {
             string payload = JsonConvert.SerializeObject(entry, Formatting.None);
             using var content = new StringContent(payload, System.Text.Encoding.UTF8, "application/json");
-            HttpClient.PostAsync(OnlineSubmitUrl, content).GetAwaiter().GetResult();
+            HttpResponseMessage response = HttpClient.PostAsync($"{OnlineBaseUrl}/leaderboard", content).GetAwaiter().GetResult();
+            return response.IsSuccessStatusCode;
         }
-        catch
+        catch (Exception exception)
         {
+            LogError("Failed to submit online leaderboard entry", exception);
+            return false;
         }
+    }
+
+    private static bool IsOnlineServerAvailable()
+    {
+        try
+        {
+            HttpResponseMessage response = HttpClient.GetAsync($"{OnlineBaseUrl}/status").GetAwaiter().GetResult();
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception exception)
+        {
+            LogError("Online leaderboard server is unavailable", exception);
+            return false;
+        }
+    }
+
+    private static string BuildLeaderboardUrl(string filter)
+    {
+        string queryFilter = filter == "All" ? string.Empty : $"&filter={Uri.EscapeDataString(filter)}";
+        return $"{OnlineBaseUrl}/leaderboard?limit=10{queryFilter}";
     }
 
     private static void SaveOfflineEntries()
@@ -249,6 +312,11 @@ public class Liderboard : IUI
         if (entries.Count > 10)
             entries.RemoveRange(10, entries.Count - 10);
     }
+
+    private static void LogError(string message, Exception exception)
+    {
+        Console.Error.WriteLine($"[Liderboard] {message}: {exception.Message}");
+    }
 }
 
 public class LeaderboardEntry
@@ -260,4 +328,5 @@ public class LeaderboardEntry
     public int Seconds { get; set; }
     public string Mode { get; set; } = string.Empty;
     public DateTime AchievedAt { get; set; }
+    public bool IsUploaded { get; set; }
 }

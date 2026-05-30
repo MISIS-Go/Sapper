@@ -1,44 +1,71 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
-using Newtonsoft.Json;
-using System.Xml.Serialization;
 
 namespace Data;
 
 public static class GameSaveStore
 {
+    private static readonly IReadOnlyList<GameSnapshotSerializer> Serializers = new GameSnapshotSerializer[]
+    {
+        new JsonGameSnapshotSerializer(),
+        new XmlGameSnapshotSerializer()
+    };
+
     public static GameSnapshot? Load(string path)
     {
         try
         {
-            if (Path.GetExtension(path).Equals(".xml", StringComparison.OrdinalIgnoreCase))
-            {
-                var serializer = new XmlSerializer(typeof(GameSnapshot));
-                using var stream = File.OpenRead(path);
-                return serializer.Deserialize(stream) as GameSnapshot;
-            }
-
-            string json = File.ReadAllText(path);
-            return JsonConvert.DeserializeObject<GameSnapshot>(json);
+            return Resolve(path).Load(path);
         }
-        catch
+        catch (Exception exception)
         {
+            Console.Error.WriteLine($"[GameSaveStore] Failed to load save '{path}': {exception.Message}");
             return null;
         }
     }
 
     public static void Save(GameSnapshot snapshot, string path)
     {
-        string extension = Path.GetExtension(path);
-        if (extension.Equals(".xml", StringComparison.OrdinalIgnoreCase))
+        Resolve(path).Save(snapshot, path);
+    }
+
+    public static void CopyFilesWithFormatChange(string folder, string fromFormat, string toFormat)
+    {
+        if (string.IsNullOrWhiteSpace(folder) ||
+            string.Equals(fromFormat, toFormat, StringComparison.OrdinalIgnoreCase) ||
+            !Directory.Exists(folder))
         {
-            var serializer = new XmlSerializer(typeof(GameSnapshot));
-            using var stream = File.Create(path);
-            serializer.Serialize(stream, snapshot);
             return;
         }
 
-        string json = JsonConvert.SerializeObject(snapshot, Formatting.Indented);
-        File.WriteAllText(path, json);
+        string fromExtension = GetExtension(fromFormat);
+        string toExtension = GetExtension(toFormat);
+
+        foreach (string path in Directory.EnumerateFiles(folder, $"*{fromExtension}", SearchOption.TopDirectoryOnly))
+        {
+            GameSnapshot? snapshot = Load(path);
+            if (snapshot is null)
+                continue;
+
+            string targetPath = Path.ChangeExtension(path, toExtension);
+            Save(snapshot, targetPath);
+        }
+    }
+
+    private static GameSnapshotSerializer Resolve(string path)
+    {
+        foreach (GameSnapshotSerializer serializer in Serializers)
+        {
+            if (serializer.CanHandle(path))
+                return serializer;
+        }
+
+        return Serializers[0];
+    }
+
+    private static string GetExtension(string format)
+    {
+        return format.Equals("Xml", StringComparison.OrdinalIgnoreCase) ? ".xml" : ".json";
     }
 }

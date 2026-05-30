@@ -21,22 +21,22 @@ public class MainUI : IUI
         Vector2 mousePos = Raylib.GetMousePosition();
         bool isLeftMouseClicked = Raylib.IsMouseButtonPressed(MouseButton.Left);
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnStart) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnStart, mousePos, isLeftMouseClicked))
         {
             InitUI.OpenStartMenu();
         }
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnContinue) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnContinue, mousePos, isLeftMouseClicked))
         {
             InitUI.OpenContinueMenu();
         }
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnLeaderboard) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnLeaderboard, mousePos, isLeftMouseClicked))
         {
             InitUI.OpenLeaderboardMenu();
         }
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnSettings) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnSettings, mousePos, isLeftMouseClicked))
         {
             InitUI.OpenSettingsMenu();
         }

@@ -6,6 +6,42 @@ using Raylib_cs;
 public class Lib
 {
 
+    public static bool IsClicked(Rectangle rect, Vector2 mousePos, bool isLeftMouseClicked)
+    {
+        return isLeftMouseClicked && Raylib.CheckCollisionPointRec(mousePos, rect);
+    }
+
+    public static int UpdateGridScrollIndex(
+        int currentIndex,
+        int itemCount,
+        int pageSize,
+        int step,
+        float wheelDelta,
+        bool isMouseInsidePanel,
+        bool isPrevClicked,
+        bool isNextClicked)
+    {
+        int maxScrollIndex = Math.Max(0, itemCount - pageSize);
+        int scrollIndex = Math.Clamp(currentIndex, 0, maxScrollIndex);
+
+        if (Math.Abs(wheelDelta) > 0.01f && isMouseInsidePanel)
+        {
+            scrollIndex = Math.Clamp(scrollIndex - Math.Sign(wheelDelta) * step, 0, maxScrollIndex);
+        }
+
+        if (isPrevClicked)
+        {
+            scrollIndex = Math.Max(0, scrollIndex - step);
+        }
+
+        if (isNextClicked)
+        {
+            scrollIndex = Math.Min(maxScrollIndex, scrollIndex + step);
+        }
+
+        return scrollIndex;
+    }
+
     public static void DrawButton(Rectangle rect, string text, Vector2 mousePos)
     {
         bool isHovered = Raylib.CheckCollisionPointRec(mousePos, rect);
@@ -26,7 +62,7 @@ public class Lib
         Raylib.DrawText(fittedText, textX, textY, fontSize, fontColor);
     }
 
-    private static string FitText(string text, int fontSize, int maxWidth)
+    public static string FitText(string text, int fontSize, int maxWidth)
     {
         if (string.IsNullOrWhiteSpace(text))
             return string.Empty;
@@ -45,5 +81,23 @@ public class Lib
         }
 
         return candidate.Length == 0 ? ellipsis : candidate + ellipsis;
+    }
+
+    public static string ShortenPath(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "Not set";
+
+        if (value.Length <= 38)
+            return value;
+
+        return "..." + value[^35..];
+    }
+
+    public static string FormatTime(int seconds)
+    {
+        int minutes = seconds / 60;
+        int remainingSeconds = seconds % 60;
+        return $"{minutes:00}:{remainingSeconds:00}";
     }
 }

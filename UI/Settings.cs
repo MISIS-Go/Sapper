@@ -29,12 +29,9 @@ public class Settings : IUI
 
         Rectangle rectFolder = new Rectangle(fieldX, 110, fieldWidth, fieldHeight);
         Rectangle rectFormatDrop = new Rectangle(fieldX, 210, fieldWidth, fieldHeight);
-        Rectangle rectFetchUrl = new Rectangle(fieldX, 310, fieldWidth, fieldHeight);
-        Rectangle rectSubmitUrl = new Rectangle(fieldX, 410, fieldWidth, fieldHeight);
-
         int bottomBtnWidth = 240;
         int bottomBtnHeight = 70;
-        int bottomY = 770;
+        int bottomY = 650;
 
         Rectangle btnSave = new Rectangle(50, bottomY, bottomBtnWidth, bottomBtnHeight);
         Rectangle btnCancel = new Rectangle(330, bottomY, bottomBtnWidth, bottomBtnHeight);
@@ -43,23 +40,23 @@ public class Settings : IUI
         Vector2 mousePos = Raylib.GetMousePosition();
         bool isLeftMouseClicked = Raylib.IsMouseButtonPressed(MouseButton.Left);
 
-        if (Raylib.CheckCollisionPointRec(mousePos, rectFolder) && isLeftMouseClicked)
+        if (Lib.IsClicked(rectFolder, mousePos, isLeftMouseClicked))
         {
             OpenFolderPicker();
         }
 
-        if (Raylib.CheckCollisionPointRec(mousePos, rectFormatDrop) && isLeftMouseClicked)
+        if (Lib.IsClicked(rectFormatDrop, mousePos, isLeftMouseClicked))
         {
             isFormatDropdownOpen = !isFormatDropdownOpen;
         }
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnSave) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnSave, mousePos, isLeftMouseClicked))
         {
             CommitSettings();
             InitUI.OpenMainMenu();
         }
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnCancel) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnCancel, mousePos, isLeftMouseClicked))
         {
             selectedFormat = InitUI.SelectedSaveFormat;
             selectedSaveFolder = InitUI.SaveFolder;
@@ -69,7 +66,7 @@ public class Settings : IUI
             InitUI.OpenMainMenu();
         }
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnBack) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnBack, mousePos, isLeftMouseClicked))
         {
             InitUI.OpenMainMenu();
         }
@@ -77,13 +74,9 @@ public class Settings : IUI
         Raylib.DrawText("Settings", 360, 30, 42, Color.Black);
         Raylib.DrawText("Save folder", labelX, (int)rectFolder.Y + 16, fontSize, Color.Black);
         Raylib.DrawText("Save format", labelX, (int)rectFormatDrop.Y + 16, fontSize, Color.Black);
-        Raylib.DrawText("Online fetch URL", labelX, (int)rectFetchUrl.Y + 16, fontSize, Color.Black);
-        Raylib.DrawText("Online submit URL", labelX, (int)rectSubmitUrl.Y + 16, fontSize, Color.Black);
 
-        Lib.DrawButton(rectFolder, ShortenPath(selectedSaveFolder), mousePos);
+        Lib.DrawButton(rectFolder, Lib.ShortenPath(selectedSaveFolder), mousePos);
         Lib.DrawButton(rectFormatDrop, selectedFormat, mousePos);
-        Lib.DrawButton(rectFetchUrl, ShortenValue(Liderboard.OnlineFetchUrl), mousePos);
-        Lib.DrawButton(rectSubmitUrl, ShortenValue(Liderboard.OnlineSubmitUrl), mousePos);
 
         Lib.DrawButton(btnSave, "Save", mousePos);
         Lib.DrawButton(btnCancel, "Cancel", mousePos);
@@ -96,7 +89,7 @@ public class Settings : IUI
                 Rectangle optionRect = new Rectangle(rectFormatDrop.X, rectFormatDrop.Y + rectFormatDrop.Height * (i + 1), rectFormatDrop.Width, rectFormatDrop.Height);
                 Lib.DrawButton(optionRect, formatOptions[i], mousePos);
 
-                if (Raylib.CheckCollisionPointRec(mousePos, optionRect) && isLeftMouseClicked)
+                if (Lib.IsClicked(optionRect, mousePos, isLeftMouseClicked))
                 {
                     selectedFormat = formatOptions[i];
                     isFormatDropdownOpen = false;
@@ -128,15 +121,17 @@ public class Settings : IUI
 
     private void CommitSettings()
     {
+        string previousGameDataFolder = InitUI.GetGameDataFolder();
+        string previousFormat = InitUI.SelectedSaveFormat;
         InitUI.SelectedSaveFormat = selectedFormat;
         InitUI.SaveFolder = selectedSaveFolder;
+
+        GameSaveStore.CopyFilesWithFormatChange(previousGameDataFolder, previousFormat, selectedFormat);
 
         SettingsStore.Save(new SettingsSnapshot
         {
             SaveFolder = selectedSaveFolder,
-            SelectedSaveFormat = selectedFormat,
-            OnlineFetchUrl = Liderboard.OnlineFetchUrl,
-            OnlineSubmitUrl = Liderboard.OnlineSubmitUrl
+            SelectedSaveFormat = selectedFormat
         });
     }
 
@@ -151,14 +146,14 @@ public class Settings : IUI
         Raylib.DrawRectangleRec(panel, new Color(250, 250, 248, 255));
         Raylib.DrawRectangleLinesEx(panel, 2, Color.Black);
         Raylib.DrawText("Pick folder", 50, 470, 24, Color.Black);
-        Raylib.DrawText(ShortenPath(browsingFolder), 50, 500, 18, Color.DarkGray);
+        Raylib.DrawText(Lib.ShortenPath(browsingFolder), 50, 500, 18, Color.DarkGray);
 
         Lib.DrawButton(btnUp, "Up", mousePos);
         Lib.DrawButton(btnPrev, "Prev", mousePos);
         Lib.DrawButton(btnNext, "Next", mousePos);
         Lib.DrawButton(btnUse, "Use", mousePos);
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnUp) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnUp, mousePos, isLeftMouseClicked))
         {
             string? parent = Directory.GetParent(browsingFolder)?.FullName;
             if (!string.IsNullOrWhiteSpace(parent))
@@ -173,7 +168,7 @@ public class Settings : IUI
         int columns = 3;
         int pageSize = visibleRows * columns;
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnUse) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnUse, mousePos, isLeftMouseClicked))
         {
             selectedSaveFolder = browsingFolder;
             isFolderPickerOpen = false;
@@ -201,24 +196,17 @@ public class Settings : IUI
         int itemHeight = 36;
         int startX = 50;
         int startY = 550;
-        int maxScrollIndex = Math.Max(0, directories.Length - pageSize);
-        folderScrollIndex = Math.Clamp(folderScrollIndex, 0, maxScrollIndex);
 
         float wheel = Raylib.GetMouseWheelMove();
-        if (Math.Abs(wheel) > 0.01f && Raylib.CheckCollisionPointRec(mousePos, panel))
-        {
-            folderScrollIndex = Math.Clamp(folderScrollIndex - Math.Sign(wheel) * columns, 0, maxScrollIndex);
-        }
-
-        if (Raylib.CheckCollisionPointRec(mousePos, btnPrev) && isLeftMouseClicked)
-        {
-            folderScrollIndex = Math.Max(0, folderScrollIndex - columns);
-        }
-
-        if (Raylib.CheckCollisionPointRec(mousePos, btnNext) && isLeftMouseClicked)
-        {
-            folderScrollIndex = Math.Min(maxScrollIndex, folderScrollIndex + columns);
-        }
+        folderScrollIndex = Lib.UpdateGridScrollIndex(
+            folderScrollIndex,
+            directories.Length,
+            pageSize,
+            columns,
+            wheel,
+            Raylib.CheckCollisionPointRec(mousePos, panel),
+            Lib.IsClicked(btnPrev, mousePos, isLeftMouseClicked),
+            Lib.IsClicked(btnNext, mousePos, isLeftMouseClicked));
 
         int endIndex = Math.Min(directories.Length, folderScrollIndex + pageSize);
         for (int i = folderScrollIndex; i < endIndex; i++)
@@ -230,7 +218,7 @@ public class Settings : IUI
             string folderName = Path.GetFileName(directories[i]);
             Lib.DrawButton(itemRect, folderName, mousePos);
 
-            if (Raylib.CheckCollisionPointRec(mousePos, itemRect) && isLeftMouseClicked)
+            if (Lib.IsClicked(itemRect, mousePos, isLeftMouseClicked))
             {
                 browsingFolder = directories[i];
                 pickerError = null;
@@ -242,25 +230,4 @@ public class Settings : IUI
         Raylib.DrawText(pageLabel, 430, 705, 18, Color.DarkGray);
     }
 
-    private static string ShortenPath(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return "Not set";
-
-        if (value.Length <= 38)
-            return value;
-
-        return "..." + value[^35..];
-    }
-
-    private static string ShortenValue(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return "Not set";
-
-        if (value.Length <= 38)
-            return value;
-
-        return "..." + value[^35..];
-    }
 }

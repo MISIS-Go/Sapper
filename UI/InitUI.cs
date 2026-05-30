@@ -87,6 +87,7 @@ public class InitUI
     public void Init()
     {
         LoadPersistedSettings();
+        Liderboard.SyncPendingOfflineEntries();
         Raylib.InitWindow(900, 900, "Sapper");
         Raylib.SetTargetFPS(60);
 
@@ -136,11 +137,5 @@ public class InitUI
 
         if (!string.IsNullOrWhiteSpace(settings.SelectedSaveFormat))
             SelectedSaveFormat = settings.SelectedSaveFormat;
-
-        if (!string.IsNullOrWhiteSpace(settings.OnlineFetchUrl))
-            Liderboard.OnlineFetchUrl = settings.OnlineFetchUrl;
-
-        if (!string.IsNullOrWhiteSpace(settings.OnlineSubmitUrl))
-            Liderboard.OnlineSubmitUrl = settings.OnlineSubmitUrl;
     }
 }

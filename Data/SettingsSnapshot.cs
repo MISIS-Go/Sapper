@@ -10,10 +10,4 @@ public class SettingsSnapshot
 
     [JsonProperty("selectedSaveFormat")]
     public string SelectedSaveFormat { get; set; } = "Json";
-
-    [JsonProperty("onlineFetchUrl")]
-    public string OnlineFetchUrl { get; set; } = string.Empty;
-
-    [JsonProperty("onlineSubmitUrl")]
-    public string OnlineSubmitUrl { get; set; } = string.Empty;
 }

@@ -10,21 +10,23 @@ public static class SettingsStore
 
     public static SettingsSnapshot Load()
     {
+        SettingsSnapshot defaults = CreateDefault();
+
         try
         {
             if (!File.Exists(SettingsPath))
             {
-                SettingsSnapshot defaults = CreateDefault();
                 Save(defaults);
                 return defaults;
             }
 
             string json = File.ReadAllText(SettingsPath);
-            return JsonConvert.DeserializeObject<SettingsSnapshot>(json) ?? CreateDefault();
+            return JsonConvert.DeserializeObject<SettingsSnapshot>(json) ?? defaults;
         }
-        catch
+        catch (Exception exception)
         {
-            return CreateDefault();
+            Console.Error.WriteLine($"[SettingsStore] Failed to load settings: {exception.Message}");
+            return defaults;
         }
     }
 
@@ -39,9 +41,7 @@ public static class SettingsStore
         return new SettingsSnapshot
         {
             SaveFolder = Path.Combine(AppContext.BaseDirectory, "Saves"),
-            SelectedSaveFormat = "Json",
-            OnlineFetchUrl = string.Empty,
-            OnlineSubmitUrl = string.Empty
+            SelectedSaveFormat = "Json"
         };
     }
 }

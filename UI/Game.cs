@@ -16,14 +16,12 @@ public class Game : IUI
     private int _width;
     private int _height;
     private double _minePercentage;
-    private double _startTime;
-    private int _elapsedSeconds;
     private bool _gameFinished;
     private bool _lastResultWasWin;
 
     public string StatusMessage { get; private set; } = string.Empty;
     public bool LastResultWasWin => _lastResultWasWin;
-    public int LastElapsedSeconds => _elapsedSeconds;
+    public int LastElapsedSeconds => _logic?.ElapsedSeconds ?? 0;
 
     public void StartNewGame(int width, int height, double minePercentage)
     {
@@ -32,7 +30,6 @@ public class Game : IUI
         _minePercentage = minePercentage;
         _gameFinished = false;
         _lastResultWasWin = false;
-        _elapsedSeconds = 0;
         StatusMessage = string.Empty;
 
         try
@@ -41,7 +38,7 @@ public class Game : IUI
             _logic = new GameLogic(width, height, minePercentage);
             _logic.OnGameLose += HandleGameLose;
             _logic.OnGameWin += HandleGameWin;
-            _startTime = Raylib.GetTime();
+            _logic.ConfigureTimer(GetTimeLimitForDifficulty(minePercentage), 0, Raylib.GetTime());
         }
         catch (Exception exception)
         {
@@ -123,7 +120,7 @@ public class Game : IUI
             return;
         }
 
-        _elapsedSeconds = GetElapsedSeconds();
+        _logic.UpdateTimer(Raylib.GetTime());
         bool leftClick = Raylib.IsMouseButtonPressed(MouseButton.Left);
         bool rightClick = Raylib.IsMouseButtonPressed(MouseButton.Right);
 
@@ -182,7 +179,7 @@ public class Game : IUI
     private void DrawHeader(Rectangle backButton, Vector2 mousePos)
     {
         Lib.DrawButton(backButton, "Back", mousePos);
-        Raylib.DrawText($"Time: {FormatTime(_elapsedSeconds)}", 380, 36, 30, Color.Black);
+        Raylib.DrawText($"Time: {Lib.FormatTime(_logic?.RemainingSeconds ?? 0)}", 380, 36, 30, Color.Black);
     }
 
     private void DrawBoard(Vector2 mousePos)
@@ -286,14 +283,6 @@ public class Game : IUI
         return new Rectangle(boardLeft, boardTop, boardWidth, boardHeight);
     }
 
-    private int GetElapsedSeconds()
-    {
-        if (_gameFinished)
-            return _elapsedSeconds;
-
-        return Math.Max(0, (int)(Raylib.GetTime() - _startTime));
-    }
-
     private void HandleGameLose()
     {
         FinishGame(false);
@@ -309,13 +298,12 @@ public class Game : IUI
         if (_gameFinished)
             return;
 
-        _elapsedSeconds = Math.Max(0, (int)(Raylib.GetTime() - _startTime));
         _gameFinished = true;
         _lastResultWasWin = win;
 
         if (win)
         {
-            Liderboard.AddResult(_width, _height, _minePercentage, _elapsedSeconds);
+            Liderboard.AddResult(_width, _height, _minePercentage, _logic?.ElapsedSeconds ?? 0);
         }
 
         InitUI.CurrentState = GameState.EndGame;
@@ -327,9 +315,6 @@ public class Game : IUI
         var logic = _logic;
         if (logic is null)
             return;
-
-        _elapsedSeconds = Math.Max(0, snapshot.ElapsedSeconds);
-        _startTime = Raylib.GetTime() - _elapsedSeconds;
 
         if (snapshot.Cells.Count < snapshot.Width * snapshot.Height)
         {
@@ -357,6 +342,11 @@ public class Game : IUI
         InitUI.SelectedWidth = snapshot.Width;
         InitUI.SelectedHeight = snapshot.Height;
         _minePercentage = snapshot.MinePercentage;
+        int timeLimitSeconds = snapshot.TimeLimitSeconds > 0
+            ? snapshot.TimeLimitSeconds
+            : GetTimeLimitForDifficulty(snapshot.MinePercentage);
+
+        logic.ConfigureTimer(timeLimitSeconds, snapshot.ElapsedSeconds, Raylib.GetTime());
         logic.MarkFieldAsGenerated();
     }
 
@@ -367,7 +357,8 @@ public class Game : IUI
             Width = _width,
             Height = _height,
             MinePercentage = _minePercentage,
-            ElapsedSeconds = _elapsedSeconds,
+            ElapsedSeconds = _logic?.ElapsedSeconds ?? 0,
+            TimeLimitSeconds = _logic?.TimeLimitSeconds ?? GetTimeLimitForDifficulty(_minePercentage),
             Cells = new List<CellSnapshot>()
         };
 
@@ -415,10 +406,8 @@ public class Game : IUI
     private string ResolveSavePath(string format)
     {
         string extension = format.Equals("Xml", StringComparison.OrdinalIgnoreCase) ? "xml" : "json";
-        string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-        string difficulty = SanitizeFilePart(InitUI.SelectedDifficultyName);
-        string size = $"{_width}x{_height}";
-        string fileName = $"{timestamp}_{difficulty}_{size}.{extension}";
+        // Use a single, overwritable save file instead of timestamped files.
+        string fileName = $"current_save.{extension}";
         return Path.Combine(InitUI.GetGameDataFolder(), fileName);
     }
 
@@ -435,10 +424,14 @@ public class Game : IUI
         return value.Replace(' ', '_');
     }
 
-    private static string FormatTime(int seconds)
+    private static int GetTimeLimitForDifficulty(double minePercentage)
     {
-        int minutes = seconds / 60;
-        int remainingSeconds = seconds % 60;
-        return $"{minutes:00}:{remainingSeconds:00}";
+        if (minePercentage <= 0.20)
+            return 180;
+
+        if (minePercentage <= 0.30)
+            return 120;
+
+        return 90;
     }
 }

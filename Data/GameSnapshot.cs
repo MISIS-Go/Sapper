@@ -18,6 +18,9 @@ public class GameSnapshot
     [JsonProperty("elapsedSeconds")]
     public int ElapsedSeconds { get; set; }
 
+    [JsonProperty("timeLimitSeconds")]
+    public int TimeLimitSeconds { get; set; }
+
     [JsonProperty("cells")]
     public List<CellSnapshot> Cells { get; set; } = new List<CellSnapshot>();
 }

@@ -32,25 +32,25 @@ public class Start : IUI
         Vector2 mousePos = Raylib.GetMousePosition();
         bool isLeftMouseClicked = Raylib.IsMouseButtonPressed(MouseButton.Left);
 
-        if (Raylib.CheckCollisionPointRec(mousePos, rectSizeDrop) && isLeftMouseClicked)
+        if (Lib.IsClicked(rectSizeDrop, mousePos, isLeftMouseClicked))
         {
             isSizeDropdownOpen = !isSizeDropdownOpen;
             isDifficultyDropdownOpen = false;
         }
 
-        if (Raylib.CheckCollisionPointRec(mousePos, rectDiffDrop) && isLeftMouseClicked)
+        if (Lib.IsClicked(rectDiffDrop, mousePos, isLeftMouseClicked))
         {
             isDifficultyDropdownOpen = !isDifficultyDropdownOpen;
             isSizeDropdownOpen = false;
         }
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnStart) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnStart, mousePos, isLeftMouseClicked))
         {
             ApplySelection();
             InitUI.StartSelectedGame();
         }
 
-        if (Raylib.CheckCollisionPointRec(mousePos, btnBack) && isLeftMouseClicked)
+        if (Lib.IsClicked(btnBack, mousePos, isLeftMouseClicked))
         {
             InitUI.OpenMainMenu();
         }
@@ -69,7 +69,7 @@ public class Start : IUI
                 Rectangle optionRect = new Rectangle(rectSizeDrop.X, rectSizeDrop.Y + rectSizeDrop.Height * (i + 1), rectSizeDrop.Width, rectSizeDrop.Height);
                 Lib.DrawButton(optionRect, sizeOptions[i], mousePos);
 
-                if (Raylib.CheckCollisionPointRec(mousePos, optionRect) && isLeftMouseClicked)
+                if (Lib.IsClicked(optionRect, mousePos, isLeftMouseClicked))
                 {
                     selectedSize = sizeOptions[i];
                     isSizeDropdownOpen = false;
@@ -84,7 +84,7 @@ public class Start : IUI
                 Rectangle optionRect = new Rectangle(rectDiffDrop.X, rectDiffDrop.Y + rectDiffDrop.Height * (i + 1), rectDiffDrop.Width, rectDiffDrop.Height);
                 Lib.DrawButton(optionRect, difficultyOptions[i], mousePos);
 
-                if (Raylib.CheckCollisionPointRec(mousePos, optionRect) && isLeftMouseClicked)
+                if (Lib.IsClicked(optionRect, mousePos, isLeftMouseClicked))
                 {
                     selectedDifficulty = difficultyOptions[i];
                     isDifficultyDropdownOpen = false;

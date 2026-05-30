@@ -33,17 +33,17 @@ public class Continue : IUI
 
           if (!isFilePickerOpen)
           {
-               if (Raylib.CheckCollisionPointRec(mousePos, btnContinueLast) && isLeftMouseClicked)
+               if (Lib.IsClicked(btnContinueLast, mousePos, isLeftMouseClicked))
                {
                     InitUI.ContinueSelectedGame(true);
                }
 
-               if (Raylib.CheckCollisionPointRec(mousePos, btnLoadFromFile) && isLeftMouseClicked)
+               if (Lib.IsClicked(btnLoadFromFile, mousePos, isLeftMouseClicked))
                {
                     OpenFilePicker();
                }
 
-               if (Raylib.CheckCollisionPointRec(mousePos, btnBack) && isLeftMouseClicked)
+               if (Lib.IsClicked(btnBack, mousePos, isLeftMouseClicked))
                {
                     InitUI.OpenMainMenu();
                }
@@ -83,13 +83,13 @@ public class Continue : IUI
           Raylib.DrawRectangleRec(panel, new Color(250, 250, 248, 255));
           Raylib.DrawRectangleLinesEx(panel, 2, Color.Black);
           Raylib.DrawText("Pick save file", 50, 470, 24, Color.Black);
-          Raylib.DrawText(ShortenPath(browsingFolder), 50, 500, 18, Color.DarkGray);
+          Raylib.DrawText(Lib.ShortenPath(browsingFolder), 50, 500, 18, Color.DarkGray);
 
           Lib.DrawButton(btnPrev, "Prev", mousePos);
           Lib.DrawButton(btnNext, "Next", mousePos);
           Lib.DrawButton(btnClose, "Close", mousePos);
 
-          if (Raylib.CheckCollisionPointRec(mousePos, btnClose) && isLeftMouseClicked)
+          if (Lib.IsClicked(btnClose, mousePos, isLeftMouseClicked))
           {
                isFilePickerOpen = false;
                pickerError = null;
@@ -113,24 +113,16 @@ public class Continue : IUI
           int startX = 50;
           int startY = 550;
 
-          int maxScrollIndex = Math.Max(0, files.Count - pageSize);
-          fileScrollIndex = Math.Clamp(fileScrollIndex, 0, maxScrollIndex);
-
           float wheel = Raylib.GetMouseWheelMove();
-          if (Math.Abs(wheel) > 0.01f && Raylib.CheckCollisionPointRec(mousePos, panel))
-          {
-               fileScrollIndex = Math.Clamp(fileScrollIndex - Math.Sign(wheel) * columns, 0, maxScrollIndex);
-          }
-
-          if (Raylib.CheckCollisionPointRec(mousePos, btnPrev) && isLeftMouseClicked)
-          {
-               fileScrollIndex = Math.Max(0, fileScrollIndex - columns);
-          }
-
-          if (Raylib.CheckCollisionPointRec(mousePos, btnNext) && isLeftMouseClicked)
-          {
-               fileScrollIndex = Math.Min(maxScrollIndex, fileScrollIndex + columns);
-          }
+          fileScrollIndex = Lib.UpdateGridScrollIndex(
+               fileScrollIndex,
+               files.Count,
+               pageSize,
+               columns,
+               wheel,
+               Raylib.CheckCollisionPointRec(mousePos, panel),
+               Lib.IsClicked(btnPrev, mousePos, isLeftMouseClicked),
+               Lib.IsClicked(btnNext, mousePos, isLeftMouseClicked));
 
           int endIndex = Math.Min(files.Count, fileScrollIndex + pageSize);
           for (int i = fileScrollIndex; i < endIndex; i++)
@@ -143,7 +135,7 @@ public class Continue : IUI
 
                DrawFileButton(itemRect, file.DisplayName, mousePos, file.IsValid);
 
-               if (file.IsValid && Raylib.CheckCollisionPointRec(mousePos, itemRect) && isLeftMouseClicked)
+               if (file.IsValid && Lib.IsClicked(itemRect, mousePos, isLeftMouseClicked))
                {
                     if (InitUI.ContinueSelectedGame(file.Path))
                          return;
@@ -179,8 +171,9 @@ public class Continue : IUI
 
                files.Sort((left, right) => File.GetLastWriteTimeUtc(right.Path).CompareTo(File.GetLastWriteTimeUtc(left.Path)));
           }
-          catch
+          catch (Exception exception)
           {
+               Console.Error.WriteLine($"[Continue] Failed to enumerate save files: {exception.Message}");
           }
 
           return files;
@@ -202,44 +195,12 @@ public class Continue : IUI
           Raylib.DrawRectangleLinesEx(rect, 2, borderColor);
 
           int fontSize = Math.Min(24, Math.Max(14, (int)(rect.Height * 0.46f)));
-          string fittedText = FitText(text, fontSize, (int)rect.Width - 16);
+          string fittedText = Lib.FitText(text, fontSize, (int)rect.Width - 16);
           int textWidth = Raylib.MeasureText(fittedText, fontSize);
           int textX = (int)(rect.X + (rect.Width - textWidth) / 2);
           int textY = (int)(rect.Y + (rect.Height - fontSize) / 2) - 1;
 
           Raylib.DrawText(fittedText, textX, textY, fontSize, fontColor);
-     }
-
-     private static string FitText(string text, int fontSize, int maxWidth)
-     {
-          if (string.IsNullOrWhiteSpace(text))
-               return string.Empty;
-
-          if (Raylib.MeasureText(text, fontSize) <= maxWidth)
-               return text;
-
-          string ellipsis = "...";
-          if (Raylib.MeasureText(ellipsis, fontSize) > maxWidth)
-               return string.Empty;
-
-          string candidate = text;
-          while (candidate.Length > 0 && Raylib.MeasureText(candidate + ellipsis, fontSize) > maxWidth)
-          {
-               candidate = candidate[..^1];
-          }
-
-          return candidate.Length == 0 ? ellipsis : candidate + ellipsis;
-     }
-
-     private static string ShortenPath(string value)
-     {
-          if (string.IsNullOrWhiteSpace(value))
-               return "Not set";
-
-          if (value.Length <= 38)
-               return value;
-
-          return "..." + value[^35..];
      }
 
      private sealed record FileEntry(string Path, string DisplayName, bool IsValid);
