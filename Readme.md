@@ -85,8 +85,32 @@
 ## Как запустить проект
 
 можно скачать исполняемый файл с https://github.com/MISIS-Go/Sapper/releases
-и его запустить (возможно потребуется загрузка пакетов в вашу систему)
+и его запустить 
+(
+возможно потребуется загрузка пакетов в вашу систему
 
+для apt дистро: 
+
+```
+sudo apt update && sudo apt install -y libgl1-mesa-dev libxi-dev libxcursor-dev libxrandr-dev libxinerama-dev libasound2-dev
+```
+
+для pacman дистро: 
+
+```
+sudo pacman -Syu --noconfirm mesa libxi libxcursor libxrandr libxinerama alsa-lib
+```
+
+для dnf дистро:
+
+```
+sudo dnf install -y mesa-libGL-devel libXi-devel libXcursor-devel libXrandr-devel libXinerama-devel alsa-lib-devel
+```
+
+для остальных OS смотрите мануал.
+
+)
+(( поддержка шиндовс в релизах имеется, но требуется установка пакетов. рекомендую использовать msys2 и тогда посмотреть, что для pacman дистро. или другой вариант: читайте мануал и зависимости (причина тому возможности для тестирования на слоп системе разработчики не имеют )))
 или 
 
 ```bash
